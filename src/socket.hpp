@@ -42,6 +42,11 @@ namespace SWS { /* SimpleWebServer */
              */
             std::unique_ptr<SWS::Connection> acceptConnection();
 
+            /**
+             * Closes the socket
+             */
+            void close();
+            
         private:
             int socket_fd;
     };

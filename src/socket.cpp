@@ -12,7 +12,10 @@ SWS::Socket::Socket(const uint16_t port) {
     }
 
     int opt = 1;
-    setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    int setsockopt_result = setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    if (setsockopt_result < 0) {
+        throw std::runtime_error("setsockopt failed!");
+    }
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -35,7 +38,7 @@ SWS::Socket::Socket(const uint16_t port) {
 }
 
 SWS::Socket::~Socket() {
-    ::close(this->socket_fd);
+    this->close();
 }
 
 SWS::Socket::Socket(Socket&& other) noexcept {
@@ -48,9 +51,7 @@ SWS::Socket& SWS::Socket::operator=(Socket&& other) noexcept {
         return *this;
     }
 
-    if (this->socket_fd != -1) {
-        ::close(this->socket_fd);
-    }
+    this->close();
 
     this->socket_fd = other.socket_fd;
     other.socket_fd = -1;
@@ -69,4 +70,10 @@ std::unique_ptr<SWS::Connection> SWS::Socket::acceptConnection() {
     }
 
     return std::make_unique<SWS::Connection>(client_fd);
+}
+
+void SWS::Socket::close() {
+    if (this->socket_fd >= 0) {
+        ::close(this->socket_fd);
+    }
 }
