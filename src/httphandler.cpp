@@ -7,6 +7,13 @@ void SWS::HttpHandler::addRoute(SWS::HttpMethod method, std::string route, Handl
 
 SWS::HttpResponse SWS::HttpHandler::handleRequest(const SWS::HttpRequest& request) {
     std::pair<SWS::HttpMethod, std::string> key = std::make_pair(request.getMethod(), request.getPath());
-    HandlerFunc& func = this->routes.at(key);
-    return func(request);
+    
+    auto it = this->routes.find(key);
+
+    if (it != this->routes.end()) {
+        HandlerFunc& func = it->second;
+        return func(request);
+    } else {
+        return SWS::HttpResponse(404, "Not Found", "");
+    }
 }
