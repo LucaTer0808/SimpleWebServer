@@ -12,7 +12,14 @@ namespace SWS {
             std::string path;
 
         public:
+            /**
+             * Returns the HttpMethod of the request.
+             */
             SWS::HttpMethod getMethod() const;
+
+            /**
+             * Returns the path of the request.
+             */
             std::string getPath() const;
     };
 }

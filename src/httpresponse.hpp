@@ -12,7 +12,17 @@ namespace SWS {
             std::string httpVersion = "HTTP/1.1";
 
         public:
-            HttpResponse(int statusCode, std::string statusText, std::string bode);
+            static constexpr int OK = 200;
+            static constexpr int NOT_FOUND = 404;
+
+            /**
+             * Constructor for a HttpReponse. Takes a status code, the corresponding text and a body.
+             */
+            HttpResponse(int statusCode, std::string statusText, std::string body);
+
+            /**
+             * Serializes the content of a Response to a string to make it processible.
+             */
             std::string serialize() const;
     };
 }

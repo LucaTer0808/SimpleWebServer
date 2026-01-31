@@ -25,14 +25,14 @@ SWS::Socket::Socket(const uint16_t port) {
     int bind_result = bind(socket_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
 
     if (bind_result < 0) {
-        ::close(this->socket_fd);
+        this->close();
         throw std::runtime_error("Socket binding failed! Most likely, the port " + std::to_string(port) + " is already taken!");
     }
 
     int listen_result = listen(this->socket_fd, SOMAXCONN);
 
     if (listen_result < 0) {
-        ::close(this->socket_fd);
+        this->close();
         throw std::runtime_error("The socket can not listen on port " + std::to_string(port));
     }
 }
@@ -75,5 +75,6 @@ std::unique_ptr<SWS::Connection> SWS::Socket::acceptConnection() {
 void SWS::Socket::close() {
     if (this->socket_fd >= 0) {
         ::close(this->socket_fd);
+        this->socket_fd = -1;
     }
 }

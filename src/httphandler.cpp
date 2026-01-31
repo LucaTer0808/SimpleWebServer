@@ -14,6 +14,6 @@ SWS::HttpResponse SWS::HttpHandler::handleRequest(const SWS::HttpRequest& reques
         HandlerFunc& func = it->second;
         return func(request);
     } else {
-        return SWS::HttpResponse(404, "Not Found", "");
+        return SWS::HttpResponse(SWS::HttpResponse::NOT_FOUND, "Not Found", "");
     }
 }
