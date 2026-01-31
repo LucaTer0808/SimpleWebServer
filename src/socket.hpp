@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <cstdint>
 #include <vector>
+#include <memory>
+
+#include "connection.hpp"
 
 namespace SWS { /* SimpleWebServer */
     class Socket {
@@ -11,7 +14,7 @@ namespace SWS { /* SimpleWebServer */
             /**
              * Constructor for the creation of a socket. Creates the socket, binds it to the given port and listens on that port.
              */
-            Socket(uint16_t port);
+            Socket(const uint16_t port);
 
             /**
              * Descturctor for an existing socket. Closes all open connections and also closes the listening socket itself.
@@ -19,18 +22,28 @@ namespace SWS { /* SimpleWebServer */
             ~Socket();
 
             /**
-             * Accepts a new connection and adds the representing file descriptor to the sockets clients vector.
+             * Copy constructor is forbidden. Socket is a move-only type.
              */
-            int acceptConnection();
+            Socket(const Socket&) = delete;
+            Socket& operator=(const Socket&) = delete;
 
             /**
-             * Closes the connection represented by the given file descriptor of the client.
+             * Declaration for move constructor.
              */
-            void closeConnection(int client_fd);
+            Socket(Socket&& other) noexcept;
+
+            /**
+             * Declaration of move assignment operator.
+             */
+            Socket& operator=(Socket&& other) noexcept;
+
+            /**
+             * Accepts a new connection and returns the corresponding connection object.
+             */
+            std::unique_ptr<SWS::Connection> acceptConnection();
 
         private:
             int socket_fd;
-            std::vector<int> clients;
     };
 }
 

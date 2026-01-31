@@ -5,11 +5,14 @@
 #include <unistd.h>
 #include <algorithm>
 
-SWS::Socket::Socket(uint16_t port) {
+SWS::Socket::Socket(const uint16_t port) {
     this->socket_fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == -1) {
         throw std::runtime_error("Socket creation failed");
     }
+
+    int opt = 1;
+    setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -32,14 +35,30 @@ SWS::Socket::Socket(uint16_t port) {
 }
 
 SWS::Socket::~Socket() {
-    for (auto &client_fd : this->clients) {
-        this->closeConnection(client_fd);
-    }
-
     ::close(this->socket_fd);
 }
 
-int SWS::Socket::acceptConnection() {
+SWS::Socket::Socket(Socket&& other) noexcept {
+    this->socket_fd = other.socket_fd;
+    other.socket_fd = -1;
+}
+
+SWS::Socket& SWS::Socket::operator=(Socket&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    if (this->socket_fd != -1) {
+        ::close(this->socket_fd);
+    }
+
+    this->socket_fd = other.socket_fd;
+    other.socket_fd = -1;
+
+    return *this;
+}
+
+std::unique_ptr<SWS::Connection> SWS::Socket::acceptConnection() {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
     
@@ -49,14 +68,5 @@ int SWS::Socket::acceptConnection() {
         throw std::runtime_error("Accepting a new connection failed!");
     }
 
-    this->clients.push_back(client_fd);
-    return client_fd;
-}
-
-void SWS::Socket::closeConnection(int client_fd) {
-    std::vector<int>::iterator it = std::find(clients.begin(), clients.end(), client_fd);
-    if (it != clients.end()) {
-        ::close(client_fd);
-        clients.erase(it);
-    }
+    return std::make_unique<SWS::Connection>(client_fd);
 }
