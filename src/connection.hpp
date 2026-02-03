@@ -13,7 +13,7 @@ namespace SWS {
             /**
              * Constructor for a connection object.
              */
-            Connection(const int client_fd);
+            Connection(const int socket_fd);
 
             /**
              * Desctructor for a connection object.

@@ -1,14 +1,24 @@
 #include<stdexcept>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <stdexcept>
 #include <array>
 
 #include "connection.hpp"
 
-SWS::Connection::Connection(const int client_fd) : client_fd(client_fd) {
+SWS::Connection::Connection(const int socket_fd) {
+    if (socket_fd < 0) {
+        throw std::runtime_error("The file descriptor of the connecting socket is invalid! Establishing the connection has failed!");
+    }
+
+    sockaddr_in client_addr{};
+    socklen_t client_len = sizeof(client_addr);
+    
+    this->client_fd = ::accept(socket_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
+
     if (client_fd < 0) {
-        throw std::runtime_error("The file descriptor of the client is negative! Establishing the connection has failed!");
+        throw std::runtime_error("Accepting a new connection failed!");
     }
 }
 

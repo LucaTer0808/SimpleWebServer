@@ -59,17 +59,8 @@ SWS::Socket& SWS::Socket::operator=(Socket&& other) noexcept {
     return *this;
 }
 
-std::unique_ptr<SWS::Connection> SWS::Socket::acceptConnection() {
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-    
-    int client_fd = ::accept(this->socket_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
-
-    if (client_fd < 0) {
-        throw std::runtime_error("Accepting a new connection failed!");
-    }
-
-    return std::make_unique<SWS::Connection>(client_fd);
+std::unique_ptr<SWS::Connection> SWS::Socket::accept() {
+    return std::make_unique<SWS::Connection>(this->socket_fd);
 }
 
 void SWS::Socket::close() {

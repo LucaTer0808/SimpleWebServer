@@ -40,7 +40,7 @@ namespace SWS { /* SimpleWebServer */
             /**
              * Accepts a new connection and returns the corresponding connection object.
              */
-            std::unique_ptr<SWS::Connection> acceptConnection();
+            std::unique_ptr<SWS::Connection> accept();
 
             /**
              * Closes the socket
