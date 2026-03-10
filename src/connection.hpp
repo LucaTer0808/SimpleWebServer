@@ -4,14 +4,21 @@
 #include <string>
 #include "connection_status.hpp"
 
-static constexpr int MAXIMUM_BUFFER_SIZE = 65536;
 
 namespace SWS {
     class Connection {
         private:
+            static constexpr int MAXIMUM_BUFFER_SIZE = 64 * 1024; // 64 kb
+
             int client_fd = -1;
-            std::string buffer_out;
-            std::string buffer_in;
+            std::string buffer_out = "";
+            std::string buffer_in = "";
+
+            /**
+             * @brief Finds the index of the beginning of the \r\n\r\n sequence that indicates the end of a request.
+             * @return The index as size_t or std::string::npos, if no substring with said sequence was found.
+             */
+            size_t find_request_ending() const;
 
         public:
 
@@ -68,6 +75,12 @@ namespace SWS {
              * @return PAYLOAD_TOO_LARGE, when the input buffer exceeds the limit that is considered healthy.
              */
             SWS::ConnectionStatus receive();
+
+            /**
+             * @brief Removes the latest full request from the buffer and returns it.
+             * @return The whole request as a string or "", if the buffer does not contain a full request.
+             */
+            std::string get_latest_request();
 
             /**
              * Closing the connection to the socket.

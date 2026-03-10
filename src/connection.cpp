@@ -26,8 +26,7 @@ SWS::Connection::~Connection() {
     this->close();
 }
 
-SWS::Connection::Connection(Connection&& other) noexcept {
-    this->client_fd = other.client_fd;
+SWS::Connection::Connection(Connection&& other) noexcept : client_fd(other.client_fd),buffer_in(std::move(other.buffer_in)), buffer_out(std::move(other.buffer_out)) {
     other.client_fd = -1;
 }
 
@@ -40,6 +39,8 @@ SWS::Connection& SWS::Connection::operator=(Connection&& other) noexcept {
 
     this->client_fd = other.client_fd;
     other.client_fd = -1;
+    this->buffer_in = std::move(other.buffer_in);
+    this->buffer_out = std::move(other.buffer_out);
 
     return *this;
 }
@@ -61,7 +62,7 @@ SWS::ConnectionStatus SWS::Connection::push_data() {
             if (errno != EWOULDBLOCK && errno != EAGAIN) {
                 return SWS::ConnectionStatus::ERROR;  // something else went wrong! This is not good!
             } else {
-                return SWS::ConnectionStatus::WANT_WRITE; // send() puffer is most likey full, we need to send again once its free again!
+                return SWS::ConnectionStatus::WANT_WRITE; // send() buffer is most likey full, we need to send again once its free again!
             }
         }
 
@@ -98,9 +99,27 @@ SWS::ConnectionStatus SWS::Connection::receive() {
     }
 }
 
+std::string SWS::Connection::get_latest_request() { 
+    size_t pos = this->find_request_ending();
+
+    if (pos == std::string::npos) {
+        return "";
+    }
+
+    size_t total_len = pos + 4; // \r and \n are accounted for as one byte!
+
+    std::string request = this->buffer_in.substr(0, pos);
+    this->buffer_in.erase(0, pos);
+    return request;
+}
+
 void SWS::Connection::close() {
     if (this->client_fd >= 0) {
         ::close(this->client_fd);
         this->client_fd = -1;
     }
+}
+
+size_t SWS::Connection::find_request_ending() const {
+    return this->buffer_in.find("\r\n\r\n");
 }
