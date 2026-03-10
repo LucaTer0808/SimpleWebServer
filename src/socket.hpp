@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "connection.hpp"
 
@@ -38,7 +39,7 @@ namespace SWS { /* SimpleWebServer */
             Socket& operator=(Socket&& other) noexcept;
 
             /**
-             * Accepts a new connection and returns the corresponding connection object.
+             * Accepts a new connection and returns the corresponding file descriptor.
              */
             std::unique_ptr<SWS::Connection> accept();
 
@@ -49,6 +50,7 @@ namespace SWS { /* SimpleWebServer */
             
         private:
             int socket_fd;
+            std::unordered_map<int, std::unique_ptr<SWS::Connection>> clients;
     };
 }
 

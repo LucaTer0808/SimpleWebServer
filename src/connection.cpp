@@ -44,40 +44,58 @@ SWS::Connection& SWS::Connection::operator=(Connection&& other) noexcept {
     return *this;
 }
 
-void SWS::Connection::send(const std::string& data) {
-    size_t total_sent = 0;
-    size_t data_length = data.length();
+SWS::ConnectionStatus SWS::Connection::send(const std::string& data) {
+    this->buffer_out.append(data);
+    return this->push_data();
+}
 
-    while (total_sent < data_length) {
-        ssize_t sent = ::send(
-            this->client_fd,
-            data.c_str() + total_sent,
-            data_length - total_sent,
-            0
+SWS::ConnectionStatus SWS::Connection::push_data() {
+    while(!buffer_out.empty()) {
+        ssize_t sent = ::send(this->client_fd,
+            this->buffer_out.data(),
+            this->buffer_out.size(),
+            MSG_NOSIGNAL
         );
 
         if (sent < 0) {
-            throw std::runtime_error("Failed to send data to client! Socket-ID: " + std::to_string(this->client_fd));
+            if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                return SWS::ConnectionStatus::ERROR;  // something else went wrong! This is not good!
+            } else {
+                return SWS::ConnectionStatus::WANT_WRITE; // send() puffer is most likey full, we need to send again once its free again!
+            }
         }
 
-        total_sent += static_cast<size_t>(sent);
+        size_t actually_sent = static_cast<size_t>(sent);
+        this->buffer_out.erase(0, actually_sent); // get rid of already sent data!
     }
+    
+    return SWS::ConnectionStatus::COMPLETE; // if the send buffer is empty, we can happily exit!
 }
 
-std::string SWS::Connection::receive() {
+SWS::ConnectionStatus SWS::Connection::receive() {
     std::array<char, 4096> buffer;
 
-    ssize_t bytes_received = ::recv(this->client_fd, buffer.data(), buffer.size(), 0);
+    while(true) {
+        ssize_t bytes_received = ::recv(this->client_fd, buffer.data(), buffer.size(), 0);
 
-    if (bytes_received < 0) {
-        throw std::runtime_error("Failed to receive data from the client!");
+        if (bytes_received < 0) {
+            if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                return SWS::ConnectionStatus::ERROR;
+            } else {
+                return SWS::ConnectionStatus::OPEN; // if the recv() buffer was cleared properly or still has content left.
+            }
+        }
+
+        if (bytes_received == 0) {
+            return SWS::ConnectionStatus::CLOSED; // recv() only returns 0, when the connection has been closed!
+        }
+
+        this->buffer_in.append(buffer.data(), bytes_received);
+
+        if (this->buffer_in.size() > MAXIMUM_BUFFER_SIZE) { // value is pickd arbitrarily. Can be changed if needed!
+            return SWS::ConnectionStatus::PAYLOAD_TOO_LARGE;
+        }
     }
-
-    if (bytes_received == 0) {
-        return "";
-    }
-
-    return std::string(buffer.data(), bytes_received);
 }
 
 void SWS::Connection::close() {
