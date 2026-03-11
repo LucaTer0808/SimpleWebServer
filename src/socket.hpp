@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "connection.hpp"
+#include "connection_status.hpp"
 
 namespace SWS { /* SimpleWebServer */
     class Socket {
@@ -39,9 +40,12 @@ namespace SWS { /* SimpleWebServer */
             Socket& operator=(Socket&& other) noexcept;
 
             /**
-             * Accepts a new connection and returns the corresponding file descriptor.
+             * Accepts a new connection and returns the status of said connection.
+             * @return OPEN, when the new connection has been established properly.
+             * @return WAITING, when there currently is no connection to establish! Important for non-blocking.
+             * @return ERROR, when an error during while trying to establish the connection occured.
              */
-            std::unique_ptr<SWS::Connection> accept();
+            SWS::ConnectionStatus accept();
 
             /**
              * Closes the socket

@@ -6,27 +6,22 @@
 #include <array>
 
 #include "connection.hpp"
+#include "common/log.hpp"
 
-SWS::Connection::Connection(const int socket_fd) {
-    if (socket_fd < 0) {
-        throw std::runtime_error("The file descriptor of the connecting socket is invalid! Establishing the connection has failed!");
-    }
-
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-    
-    this->client_fd = ::accept(socket_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
-
+SWS::Connection::Connection(const int client_fd) : client_fd(client_fd) {
     if (client_fd < 0) {
-        throw std::runtime_error("Accepting a new connection failed!");
+        SWS::log(SWS::LogLevel::ERROR, "Invalid client file descriptor! It can't be negative. FD: " + std::to_string(client_fd));
+        throw std::invalid_argument("Negative file descriptor passed to the connection constructor! It can not represent a valid client socket!");
     }
+
+    SWS::log(SWS::LogLevel::INFO, "Connection to client socket established with FD: " + std::to_string(this->client_fd));
 }
 
 SWS::Connection::~Connection() {
     this->close();
 }
 
-SWS::Connection::Connection(Connection&& other) noexcept : client_fd(other.client_fd),buffer_in(std::move(other.buffer_in)), buffer_out(std::move(other.buffer_out)) {
+SWS::Connection::Connection(Connection&& other) noexcept : client_fd(other.client_fd), buffer_in(std::move(other.buffer_in)), buffer_out(std::move(other.buffer_out)) {
     other.client_fd = -1;
 }
 
@@ -51,25 +46,32 @@ SWS::ConnectionStatus SWS::Connection::send(const std::string& data) {
 }
 
 SWS::ConnectionStatus SWS::Connection::push_data() {
-    while(!buffer_out.empty()) {
+    while(this->bytes_sent_offset < this->buffer_out.size()) {
         ssize_t sent = ::send(this->client_fd,
-            this->buffer_out.data(),
-            this->buffer_out.size(),
+            this->buffer_out.data() + this->bytes_sent_offset,
+            this->buffer_out.size() - this->bytes_sent_offset,
             MSG_NOSIGNAL
         );
 
         if (sent < 0) {
             if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                SWS::log_errno("Failed to send data to the client with FD: " + std::to_string(this->client_fd));
                 return SWS::ConnectionStatus::ERROR;  // something else went wrong! This is not good!
             } else {
                 return SWS::ConnectionStatus::WANT_WRITE; // send() buffer is most likey full, we need to send again once its free again!
             }
         }
 
-        size_t actually_sent = static_cast<size_t>(sent);
-        this->buffer_out.erase(0, actually_sent); // get rid of already sent data!
+        if (sent == 0) {
+            SWS::log(SWS::LogLevel::INFO, "No active connection to client with FD: " + std::to_string(this->client_fd));
+            return SWS::ConnectionStatus::CLOSED;
+        }
+
+        this->bytes_sent_offset += static_cast<size_t>(sent);
     }
-    
+
+    this->buffer_out.clear();
+    this->bytes_sent_offset = 0;
     return SWS::ConnectionStatus::COMPLETE; // if the send buffer is empty, we can happily exit!
 }
 
@@ -81,6 +83,7 @@ SWS::ConnectionStatus SWS::Connection::receive() {
 
         if (bytes_received < 0) {
             if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                SWS::log_errno("Failed to receive data from client with FD: " + std::to_string(this->client_fd));
                 return SWS::ConnectionStatus::ERROR;
             } else {
                 return SWS::ConnectionStatus::OPEN; // if the recv() buffer was cleared properly or still has content left.
@@ -88,12 +91,14 @@ SWS::ConnectionStatus SWS::Connection::receive() {
         }
 
         if (bytes_received == 0) {
+            SWS::log(SWS::LogLevel::INFO, "No active connection to client with FD: " + std::to_string(this->client_fd));
             return SWS::ConnectionStatus::CLOSED; // recv() only returns 0, when the connection has been closed!
         }
 
         this->buffer_in.append(buffer.data(), bytes_received);
 
         if (this->buffer_in.size() > MAXIMUM_BUFFER_SIZE) { // value is pickd arbitrarily. Can be changed if needed!
+            SWS::log(SWS::LogLevel::WARNING, "Request size exceeded the healthy limit of " + std::to_string(MAXIMUM_BUFFER_SIZE / 1024) + " kb on client socket with FD: " + std::to_string(this->client_fd));  
             return SWS::ConnectionStatus::PAYLOAD_TOO_LARGE;
         }
     }
@@ -116,6 +121,7 @@ std::string SWS::Connection::get_latest_request() {
 void SWS::Connection::close() {
     if (this->client_fd >= 0) {
         ::close(this->client_fd);
+        SWS::log(SWS::LogLevel::INFO, "Client socket closed with FD: " + std::to_string(this->client_fd));
         this->client_fd = -1;
     }
 }

@@ -11,6 +11,7 @@ namespace SWS {
             static constexpr int MAXIMUM_BUFFER_SIZE = 64 * 1024; // 64 kb
 
             int client_fd = -1;
+            size_t bytes_sent_offset = 0; // to increase sending speed
             std::string buffer_out = "";
             std::string buffer_in = "";
 
@@ -23,9 +24,11 @@ namespace SWS {
         public:
 
             /**
-             * Constructor for a connection object.
+             * Constructor for a connection object. Note, that due to non-blocking purposes, the fd has
+             * to identify an existing client socket already!
+             * @param client_fd The file descriptor identifiying the connection.
              */
-            Connection(const int socket_fd);
+            Connection(const int client_fd);
 
             /**
              * Desctructor for a connection object.
@@ -44,11 +47,13 @@ namespace SWS {
 
             /**
              * Explicit declaration of the move operation.
+             * @param other The temporary object to move from.
              */
             Connection(Connection&& other) noexcept;
             
             /**
              * Explicit declaration of the move operator.
+             * @param other The object to move assign from.
              */
             Connection& operator=(Connection&& other) noexcept;
 

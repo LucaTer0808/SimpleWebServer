@@ -13,7 +13,10 @@ namespace SWS {
         COMPLETE,
 
         // shared between both operations
-        ERROR
+        ERROR,
+
+        // When the socket is trying to accept but there is no connection to accept
+        WAITING
     };
 }
 
