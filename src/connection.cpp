@@ -108,8 +108,8 @@ std::string SWS::Connection::get_latest_request() {
 
     size_t total_len = pos + 4; // \r and \n are accounted for as one byte!
 
-    std::string request = this->buffer_in.substr(0, pos);
-    this->buffer_in.erase(0, pos);
+    std::string request = this->buffer_in.substr(0, total_len);
+    this->buffer_in.erase(0, total_len);
     return request;
 }
 
