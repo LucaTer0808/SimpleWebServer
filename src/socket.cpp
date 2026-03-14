@@ -4,11 +4,12 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <algorithm>
+#include <fcntl.h>
 
 #include "common/log.hpp"
 
 SWS::Socket::Socket(const uint16_t port) {
-    this->socket_fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    this->socket_fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (socket_fd == -1) {
         throw std::runtime_error("Socket creation failed");
     }
