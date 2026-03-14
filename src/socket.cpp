@@ -5,19 +5,24 @@
 #include <unistd.h>
 #include <algorithm>
 #include <fcntl.h>
+#include <format>
+#include <string>
 
 #include "common/log.hpp"
 
 SWS::Socket::Socket(const uint16_t port) {
     this->socket_fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (socket_fd == -1) {
-        throw std::runtime_error("Socket creation failed");
+        SWS::log_errno("Creating a listening socket failed!");
+        throw std::runtime_error("::socketAF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0) failed!");
     }
 
     int opt = 1;
     int setsockopt_result = setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     if (setsockopt_result < 0) {
-        throw std::runtime_error("setsockopt failed!");
+        this->close();
+        SWS::log_errno("Setting socket options failed with FD: " + std::to_string(socket_fd));
+        throw std::runtime_error("setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) failed!");
     }
 
     sockaddr_in addr{};
@@ -25,18 +30,20 @@ SWS::Socket::Socket(const uint16_t port) {
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(port);
 
-    int bind_result = bind(socket_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    int bind_result = ::bind(socket_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
 
     if (bind_result < 0) {
         this->close();
-        throw std::runtime_error("Socket binding failed! Most likely, the port " + std::to_string(port) + " is already taken!");
+        SWS::log_errno("Binding the socket with FD " + std::to_string(socket_fd) + " to port " + std::to_string(port) + " failed!");
+        throw std::runtime_error("::bind(socket_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) failed!");
     }
 
     int listen_result = listen(this->socket_fd, SOMAXCONN);
 
     if (listen_result < 0) {
         this->close();
-        throw std::runtime_error("The socket can not listen on port " + std::to_string(port));
+        SWS::log_errno("Making the socket listen has failed with FD: " + std::to_string(socket_fd));
+        throw std::runtime_error("listen(this->socket_fd, SOMAXCONN) has failed!");
     }
 }
 
