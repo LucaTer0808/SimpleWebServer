@@ -11,23 +11,23 @@
 
 SWS::Connection::Connection(const int client_fd) : client_fd(client_fd) {
     if (client_fd < 0) {
+        this->close();
         SWS::log(SWS::LogLevel::ERROR, "Invalid client file descriptor! It can't be negative. FD: " + std::to_string(client_fd));
         throw std::invalid_argument("Negative file descriptor passed to the connection constructor! It can not represent a valid client socket!");
-        this->close();
     }
 
     int flags = fcntl(client_fd, F_GETFL, 0);
 
     if (flags == -1) {
+        this->close();
         SWS::log_errno("Could not get flags for FD: " + std::to_string(client_fd));
         throw std::runtime_error("fcntl F_GETFL failed");
-        this->close();
     }
 
     if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        this->close();
         SWS::log_errno("Could not set O_NONBLOCK for FD: " + std::to_string(client_fd));
         throw std::runtime_error("fcntl F_SETFL failed");
-        this->close();
     }
     
     SWS::log(SWS::LogLevel::INFO, "Connection to client socket established and set to non-blocking with FD: " + std::to_string(this->client_fd));
