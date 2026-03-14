@@ -11,7 +11,7 @@
 #include "common/log.hpp"
 
 SWS::Socket::Socket(const uint16_t port) {
-    this->socket_fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    this->socket_fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (socket_fd == -1) {
         SWS::log_errno("Creating a listening socket failed!");
         throw std::runtime_error("::socketAF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0) failed!");
@@ -45,6 +45,8 @@ SWS::Socket::Socket(const uint16_t port) {
         SWS::log_errno("Making the socket listen has failed with FD: " + std::to_string(socket_fd));
         throw std::runtime_error("listen(this->socket_fd, SOMAXCONN) has failed!");
     }
+
+    SWS::log(SWS::LogLevel::INFO, "Socket with FD: " + std::to_string(socket_fd) + " is now listening on port: " + std::to_string(port));
 }
 
 SWS::Socket::~Socket() {
