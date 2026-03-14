@@ -61,30 +61,32 @@ SWS::Socket& SWS::Socket::operator=(Socket&& other) noexcept {
     return *this;
 }
 
-SWS::ConnectionStatus SWS::Socket::accept() {
+std::vector<std::unique_ptr<SWS::Connection>> SWS::Socket::accept() {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
 
-    int client_fd = ::accept(this->socket_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
+    std::vector<std::unique_ptr<SWS::Connection>> conns;
 
-    if (client_fd < 0) {
-        if (errno != EWOULDBLOCK && errno != EAGAIN) {
-            SWS::log_errno("An error occured when trying to establish a connection!");
-            return SWS::ConnectionStatus::ERROR;
-        } else {
-            return SWS::ConnectionStatus::WAITING;
+    while (true) {
+        int client_fd = ::accept(this->socket_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
+
+        if (client_fd < 0) {
+            if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                SWS::log_errno("An error occured when trying to establish a connection! Continueing with the next connection!");
+                continue;
+            } else {
+                break; // happens when no more connectinos are in the buffer
+            }
+        }
+
+        try {
+            conns.push_back(std::make_unique<SWS::Connection>(client_fd));
+        } catch (const std::exception& e) {
+            continue;
         }
     }
 
-    if (this->clients.find(client_fd) != this->clients.end()) {
-        this->clients.erase(client_fd);
-        SWS::log(SWS::LogLevel::WARNING, "FD collision: A connection object with FD: " + std::to_string(client_fd) + " already exists. It is removed from the socket!");
-    }
-
-    std::unique_ptr<SWS::Connection> conn = std::make_unique<SWS::Connection>(client_fd);
-    this->clients.emplace(client_fd, std::move(conn));
-
-    return SWS::ConnectionStatus::OPEN;
+    return conns;
 }
 
 void SWS::Socket::close() {

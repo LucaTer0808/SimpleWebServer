@@ -40,12 +40,10 @@ namespace SWS { /* SimpleWebServer */
             Socket& operator=(Socket&& other) noexcept;
 
             /**
-             * Accepts a new connection and returns the status of said connection.
-             * @return OPEN, when the new connection has been established properly.
-             * @return WAITING, when there currently is no connection to establish! Important for non-blocking.
-             * @return ERROR, when an error during while trying to establish the connection occured.
+             * Accepts all new connections in the accept buffer, collects them and returns them as a vector for further processing
+             * @return A vector of unique_ptr<SWS::Connection> containing all successfully established connections.
              */
-            SWS::ConnectionStatus accept();
+            std::vector<std::unique_ptr<SWS::Connection>> accept();
 
             /**
              * Closes the socket
@@ -54,7 +52,6 @@ namespace SWS { /* SimpleWebServer */
             
         private:
             int socket_fd;
-            std::unordered_map<int, std::unique_ptr<SWS::Connection>> clients;
     };
 }
 
