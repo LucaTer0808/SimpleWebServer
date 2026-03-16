@@ -69,6 +69,7 @@ namespace SWS {
              * @brief Tries to push the data from the output buffer through the channel to the client socket.
              * @return WANT_WRITE, when the buffer still contains data to be pushed through.
              * @return COMPLETE, when the whole content from the buffer could be pushed through the channel.
+             * @return ERROR, when an error occured while pushing data through the socket.
              */
             SWS::ConnectionStatus push_data();
             
