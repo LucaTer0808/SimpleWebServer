@@ -42,8 +42,6 @@ namespace SWS {
              * @param other The Server object to move from.
              */
             Server& operator=(const Server&& other);
-
-
     };
 }
 
