@@ -1,5 +1,6 @@
 #include <sys/epoll.h>
 #include <stdexcept>
+#include <array>
 #include <unistd.h>
 
 #include "eventhandler.hpp"
@@ -34,9 +35,32 @@ SWS::EventHandler& SWS::EventHandler::operator=(EventHandler&& other) noexcept {
     return *this;
 }
 
+std::unordered_map<int, uint32_t> SWS::EventHandler::wait_events() {
+    std::array<epoll_event, SWS::EventHandler::MAX_EVENTS> events;
+    std::unordered_map<int, uint32_t> result;
+
+    int epoll_result = epoll_wait(this->epoll_fd, events.data(), SWS::EventHandler::MAX_EVENTS, NO_TIMEOUT);
+
+    if (epoll_result < 0) {
+        SWS::log_errno("Failed polling events!");
+        return result; // should be empty at this point!
+    }
+
+    for (int i = 0; i < epoll_result; ++i) {
+        const epoll_event &event = events.at(i);
+
+        int fd = event.data.fd;
+        uint32_t ev_mask = event.events;
+
+        result.emplace(fd, ev_mask);
+    }
+
+    return result;
+}
+
 SWS::EventHandlerStatus SWS::EventHandler::add(int fd, uint32_t events) {
     if (fd < 0) {
-        SWS::log(SWS::LogLevel::WARNING, std::string("Negative fd passed to the EventHandler. No Socket can be registered!"));
+        SWS::log(SWS::LogLevel::WARNING, std::string("Negative fd passed to the EventHandler. No Socket can be added!"));
         return SWS::EventHandlerStatus::FAILURE;
     }
 

@@ -1,10 +1,13 @@
 #pragma once /* eventhandler_hpp */
 
-#include <vector>
+#include <unordered_map>
 
 namespace SWS {
     class EventHandler {
         public:
+            static constexpr int MAX_EVENTS = 128;
+            static constexpr int NO_TIMEOUT = -1;
+
             /**
              * Constructor for an EventHandler;
              */
@@ -34,10 +37,10 @@ namespace SWS {
             EventHandler& operator=(EventHandler&& other) noexcept;
 
             /**
-             * Returns a vector containing file desctiptors of all sockets who could perform IO.
-             * Blocks until at least on event occurs.
+             * @brief Collects events for events and returns the events for each file descriptor. See the static constexpr above, how many events are polled at once.
+             * @return An unordered map with the fd as key and a bitmap representing the events as value.
              */
-            std::vector<int> wait_events();
+            std::unordered_map<int, uint32_t> wait_events();
 
             /**
              * @brief Add a file descriptor representing a socket for event polling.
