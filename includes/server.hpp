@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "socket.hpp"
+#include "eventhandler.hpp"
 #include "http/httphandler.hpp"
 #include "http/httpmethod.hpp"
 #include "http/httpresponse.hpp"
@@ -16,9 +17,10 @@ namespace SWS {
         private:
             using HandlerFunc = std::function<HttpResponse(const HttpRequest&)>;
 
-            std::unique_ptr<SWS::Socket> listening_socket;
+            std::unique_ptr<SWS::Socket> listening_socket; // to let it also be null
+            SWS::EventHandler event_handler;
             std::unordered_map<int, std::unique_ptr<SWS::Connection>> conns;
-            SWS::HttpHandler handler;
+            SWS::HttpHandler http_handler;
 
         public:
             /**
@@ -58,10 +60,21 @@ namespace SWS {
             void get(std::string route, HandlerFunc func);
 
             /**
-             * @brief up the server. Before starting, all routes have to be added to ensure functionality!
+             * @brief Start up the server. Before starting, all routes have to be added to ensure functionality!
              * @param port The port to listen on.
+             * @return LISTENING, if the server started properly.
+             * @return FAILURE, if the start of the webserver did not work.
              */
-            void start(uint16_t port);
+            SWS::ServerStatus start(uint16_t port);
+
+            /**
+             * @brief The main loop for the master thread responsible for managing connections and distributing orders.
+             */
+            void master_thread_loop();
+    };
+
+    enum class ServerStatus {
+        LISTENING, FAILURE
     };
 }
 
