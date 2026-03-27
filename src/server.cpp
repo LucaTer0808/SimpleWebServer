@@ -32,6 +32,7 @@ void SWS::Server::start(uint16_t port, size_t num_workers = 0) {
     this->master_thread_loop();
 }
 
+// TODO: Implement
 void SWS::Server::master_thread_loop() {
     while(true) {
         std::unordered_map<int, uint32_t> events = this->event_handler.wait_events();
