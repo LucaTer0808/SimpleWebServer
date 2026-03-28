@@ -36,6 +36,13 @@ void SWS::Server::start(uint16_t port, size_t num_workers = 0) {
 void SWS::Server::master_thread_loop() {
     while(true) {
         std::unordered_map<int, uint32_t> events = this->event_handler.wait_events();
+
+        for (auto& [fd, event_mask] : events) {
+            if (this->conns.find(fd) == this->conns.end()) {
+                SWS::log(SWS::LogLevel::WARNING, std::string("No connetion represented by fd: " + std::to_string(fd) + std::string(" currently exists. The events can not be executed!")));
+                continue;
+            }
+        }
     }
 
 }
