@@ -38,6 +38,11 @@ namespace SWS {
              */
             size_t find_request_ending() const;
 
+            /**
+             * Closing the connection to the socket.
+             */
+            void close();
+
         public:
             /**
              * Constructor for a connection object. Note, that due to non-blocking purposes, the fd has
@@ -111,12 +116,6 @@ namespace SWS {
              * @return The whole request as a string or "", if the buffer does not contain a full request.
              */
             std::string get_latest_request();
-
-            /**
-             * Closing the connection to the socket.
-             */
-            void close();
-
     };
 }
 
