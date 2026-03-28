@@ -9,7 +9,7 @@
 #include "connection.hpp"
 #include "common/log.hpp"
 
-SWS::Connection::Connection(const int client_fd) : client_fd(client_fd) {
+SWS::Connection::Connection(const int client_fd) : client_fd(client_fd), buffer_in(""), buffer_out(""), responses() {
     if (client_fd < 0) {
         this->close();
         SWS::log(SWS::LogLevel::ERROR, "Invalid client file descriptor! It can't be negative. FD: " + std::to_string(client_fd));
@@ -37,7 +37,7 @@ SWS::Connection::~Connection() {
     this->close();
 }
 
-SWS::Connection::Connection(Connection&& other) noexcept : client_fd(other.client_fd), buffer_in(std::move(other.buffer_in)), buffer_out(std::move(other.buffer_out)) {
+SWS::Connection::Connection(Connection&& other) noexcept : client_fd(other.client_fd), buffer_in(std::move(other.buffer_in)), buffer_out(std::move(other.buffer_out)), responses(std::move(other.responses)) {
     other.client_fd = -1;
 }
 
@@ -52,6 +52,7 @@ SWS::Connection& SWS::Connection::operator=(Connection&& other) noexcept {
     other.client_fd = -1;
     this->buffer_in = std::move(other.buffer_in);
     this->buffer_out = std::move(other.buffer_out);
+    this->responses = std::move(other.responses);
 
     return *this;
 }
@@ -62,10 +63,10 @@ SWS::ConnectionStatus SWS::Connection::send(const std::string& data) {
 }
 
 SWS::ConnectionStatus SWS::Connection::push_data() {
-    while(this->bytes_sent_offset < this->buffer_out.size()) {
+    while(!this->buffer_out.empty()) {
         ssize_t sent = ::send(this->client_fd,
-            this->buffer_out.data() + this->bytes_sent_offset,
-            this->buffer_out.size() - this->bytes_sent_offset,
+            this->buffer_out.data(),
+            this->buffer_out.size(),
             MSG_NOSIGNAL
         );
 
@@ -83,11 +84,9 @@ SWS::ConnectionStatus SWS::Connection::push_data() {
             return SWS::ConnectionStatus::CLOSED;
         }
 
-        this->bytes_sent_offset += static_cast<size_t>(sent);
+        this->buffer_out.erase(0, static_cast<size_t>(sent));
     }
 
-    this->buffer_out.clear();
-    this->bytes_sent_offset = 0;
     return SWS::ConnectionStatus::COMPLETE; // if the send buffer is empty, we can happily exit!
 }
 
@@ -132,6 +131,31 @@ std::string SWS::Connection::get_latest_request() {
     std::string request = this->buffer_in.substr(0, total_len);
     this->buffer_in.erase(0, total_len);
     return request;
+}
+
+SWS::ConnectionStatus SWS::Connection::try_serve_future() {
+    if (!this->is_future_complete()) {
+        return SWS::ConnectionStatus::COMPLETE;
+    }
+
+    std::string response = this->responses.front().get();
+    this->responses.pop();
+
+    return this->send(response);
+}
+
+bool SWS::Connection::is_future_complete() {
+    if (this->responses.empty()) {
+        return false;
+    }
+
+    std::future<std::string>& first = this->responses.front();
+
+    if (first.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        return true;
+    }
+
+    return false;
 }
 
 void SWS::Connection::close() {

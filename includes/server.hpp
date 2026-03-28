@@ -9,9 +9,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <thread>
+#include <future>
 
 #include "socket.hpp"
 #include "eventhandler.hpp"
+#include "utils/thread_safe_queue.hpp"
 #include "http/httphandler.hpp"
 #include "http/httpmethod.hpp"
 #include "http/httpresponse.hpp"
@@ -22,12 +24,8 @@ namespace SWS {
         private:
             using HandlerFunc = std::function<HttpResponse(const HttpRequest&)>;
 
-            std::queue<std::tuple<int, std::string>> jobs;
-            std::mutex jobs_mutex;
-            std::condition_variable queue_not_empty;
-
-            std::queue<std::tuple<int, std::string>> responses;
-            std::mutex responses_mutex;
+            SWS::ThreadSafeQueue<std::tuple<int, std::string>> jobs;
+            SWS::ThreadSafeQueue<std::future<std::tuple<int, std::string>>> responses;
 
             std::vector<std::jthread> worker_threads;
 

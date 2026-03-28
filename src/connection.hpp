@@ -2,8 +2,10 @@
 #define connection_hpp
 
 #include <string>
-#include "connection_status.hpp"
+#include <future>
+#include <queue>
 
+#include "connection_status.hpp"
 
 namespace SWS {
     class Connection {
@@ -11,9 +13,24 @@ namespace SWS {
             static constexpr int MAXIMUM_BUFFER_SIZE = 64 * 1024; // 64 kb
 
             int client_fd = -1;
-            size_t bytes_sent_offset = 0; // to increase sending speed
-            std::string buffer_out = "";
-            std::string buffer_in = "";
+            std::string buffer_in;
+            std::string buffer_out;
+
+            std::queue<std::future<std::string>> responses;
+
+            /**
+             * @brief Checks if the first future in the responses queue has already been completed.
+             * @return true, if the future is complete. false otherwise.
+             */
+            bool is_future_complete();
+
+            /**
+             * Appends data to be send to the output puffer and immediately tries to push it through the channel.
+             * @param data The data to be appended to the output puffer.
+             * @return WANT_WRITE, when there still is data in the puffer to be pushed through the socket after the first initial send.
+             * @return COMPLETE, when all data could be pushed through the socket and nothing is left to do.
+             */
+            SWS::ConnectionStatus send(const std::string& data);
 
             /**
              * @brief Finds the index of the beginning of the \r\n\r\n sequence that indicates the end of a request.
@@ -22,7 +39,6 @@ namespace SWS {
             size_t find_request_ending() const;
 
         public:
-
             /**
              * Constructor for a connection object. Note, that due to non-blocking purposes, the fd has
              * to identify an existing client socket already!
@@ -58,18 +74,21 @@ namespace SWS {
             Connection& operator=(Connection&& other) noexcept;
 
             /**
-             * Appends data to be send to the output puffer and immediately tries to push it through the channel.
-             * @param data The data to be appended to the output puffer.
-             * @return WANT_WRITE, when there still is data in the puffer to be pushed through the socket after the first initial send.
-             * @return COMPLETE, when all data could be pushed through the socket and nothing is left to do.
+             * Tries to serve a future in the queue. Checks if the first future is complete and if so
+             * turns it into a std::string and internally calls the send operation on it.
+             * @return WANT_WRITE, when the buffer still contains data to be pushed through.
+             * @return COMPLETE, when the whole content from the buffer could be pushed through the channel or there is no more 
+             * @return ERROR, when an error occured while pushing data through the socket.
+             * @return CLOSED, when the connection was closed.
              */
-            SWS::ConnectionStatus send(const std::string& data);
+            SWS::ConnectionStatus try_serve_future();
 
             /**
              * @brief Tries to push the data from the output buffer through the channel to the client socket.
              * @return WANT_WRITE, when the buffer still contains data to be pushed through.
              * @return COMPLETE, when the whole content from the buffer could be pushed through the channel.
              * @return ERROR, when an error occured while pushing data through the socket.
+             * @return CLOSED, when the connection was closed.
              */
             SWS::ConnectionStatus push_data();
             

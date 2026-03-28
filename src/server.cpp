@@ -1,7 +1,7 @@
 #include "../includes/server.hpp"
 #include "common/log.hpp"
 
-SWS::Server::Server() : listening_socket(nullptr), conns(), event_handler(), http_handler() {}
+SWS::Server::Server() : jobs(), responses(), worker_threads(), listening_socket(nullptr), conns(), event_handler(), http_handler() {}
 
 void SWS::Server::get(std::string route, HandlerFunc func) {
     std::string route_copy = route;
@@ -37,6 +37,7 @@ void SWS::Server::master_thread_loop() {
     while(true) {
         std::unordered_map<int, uint32_t> events = this->event_handler.wait_events();
     }
+
 }
 
 // TODO: Implement
