@@ -1,7 +1,7 @@
 #include "../includes/server.hpp"
 #include "common/log.hpp"
 
-SWS::Server::Server() : jobs(), responses(), worker_threads(), listening_socket(nullptr), conns(), event_handler(), http_handler() {}
+SWS::Server::Server() : jobs(), worker_threads(), listening_socket(nullptr), conns(), event_handler(), http_handler() {}
 
 void SWS::Server::get(std::string route, HandlerFunc func) {
     std::string route_copy = route;
@@ -51,12 +51,21 @@ void SWS::Server::append_job(int fd, std::string request_string) {
         return;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(this->jobs_mutex);
-        this->jobs.emplace(fd, std::move(request_string));
+    if (this->conns.find(fd) == this->conns.end()) {
+        SWS::log(SWS::LogLevel::WARNING, "The given file descriptor does not represent a valid connection! append_job cannot be called!");
+        return;
     }
 
-    queue_not_empty.notify_one();
+    std::promise<std::string> promise;
+    std::future<std::string> future = promise.get_future();
+
+    this->conns.at(fd)->enqueue_future(std::move(future));
+
+    SWS::Job job;
+    job.request = std::move(request_string);
+    job.promise = std::move(promise);
+
+    this->jobs.push(std::move(job));
 }
 
 size_t SWS::Server::calculate_thread_number(size_t num_workers) {

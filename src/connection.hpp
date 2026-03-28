@@ -74,6 +74,11 @@ namespace SWS {
             Connection& operator=(Connection&& other) noexcept;
 
             /**
+             * Enqueues a new string feature that is filled automatically when a worker thread finished the job.
+             */
+            void enqueue_future(std::future<std::string> future);
+
+            /**
              * Tries to serve a future in the queue. Checks if the first future is complete and if so
              * turns it into a std::string and internally calls the send operation on it.
              * @return WANT_WRITE, when the buffer still contains data to be pushed through.

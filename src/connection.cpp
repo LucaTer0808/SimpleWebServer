@@ -158,6 +158,10 @@ bool SWS::Connection::is_future_complete() {
     return false;
 }
 
+void SWS::Connection::enqueue_future(std::future<std::string> future) {
+    this->responses.push(std::move(future));
+}
+
 void SWS::Connection::close() {
     if (this->client_fd >= 0) {
         ::close(this->client_fd);

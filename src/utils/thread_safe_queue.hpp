@@ -23,6 +23,16 @@ namespace SWS {
             }
 
             /**
+             * @brief Pushes an element to the queue and appends it at the end.
+             * @param element The element to push.
+             */
+            void push(const T element) {
+                std::lock_guard<std::mutex> lock(this->queue_mutex);
+                this->queue.push(std::move(element));
+                this->not_empty.notify_one();
+            }
+
+            /**
              * @brief Blocking version of pop. Moves the first element in the queue into the passed variable in order
              * to avoid the missing entry problem.
              * @param target A reference to a variable in which the element to pop is copied into.

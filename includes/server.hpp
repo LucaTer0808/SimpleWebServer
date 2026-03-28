@@ -12,6 +12,7 @@
 #include <future>
 
 #include "socket.hpp"
+#include "data/job.hpp"
 #include "eventhandler.hpp"
 #include "utils/thread_safe_queue.hpp"
 #include "http/httphandler.hpp"
@@ -24,8 +25,7 @@ namespace SWS {
         private:
             using HandlerFunc = std::function<HttpResponse(const HttpRequest&)>;
 
-            SWS::ThreadSafeQueue<std::tuple<int, std::string>> jobs;
-            SWS::ThreadSafeQueue<std::future<std::tuple<int, std::string>>> responses;
+            SWS::ThreadSafeQueue<SWS::Job> jobs;
 
             std::vector<std::jthread> worker_threads;
 
