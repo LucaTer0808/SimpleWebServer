@@ -165,7 +165,7 @@ void SWS::Connection::enqueue_future(std::future<std::string> future) {
 void SWS::Connection::close() {
     if (this->client_fd >= 0) {
         ::close(this->client_fd);
-        SWS::log(SWS::LogLevel::INFO, "Client socket closed with FD: " + std::to_string(this->client_fd));
+        SWS::log(SWS::LogLevel::INFO, std::string("Client socket closed with FD: ") + std::to_string(this->client_fd));
         this->client_fd = -1;
     }
 }
