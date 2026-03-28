@@ -22,7 +22,7 @@ namespace SWS {
              * @brief Checks if the first future in the responses queue has already been completed.
              * @return true, if the future is complete. false otherwise.
              */
-            bool is_future_complete();
+            bool is_future_complete() const;
 
             /**
              * Appends data to be send to the output puffer and immediately tries to push it through the channel.

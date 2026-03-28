@@ -144,14 +144,12 @@ SWS::ConnectionStatus SWS::Connection::try_serve_future() {
     return this->send(response);
 }
 
-bool SWS::Connection::is_future_complete() {
+bool SWS::Connection::is_future_complete() const {
     if (this->responses.empty()) {
         return false;
     }
 
-    std::future<std::string>& first = this->responses.front();
-
-    if (first.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+    if (this->responses.front().wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         return true;
     }
 
