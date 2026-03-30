@@ -74,6 +74,12 @@ namespace SWS {
 
             void handle_socket_events(int fd, uint32_t event_mask);
 
+            /**
+             * Handles all event related logic for the connection with the given fd, including subscription for EPOLLOUT, job generation
+             * and response sending logic. The actual work will be done in handle_socket_events.
+             * @param fd The file descriptor representing said connection object.
+             * @param event_mask The bitmask representing all incoming events.
+             */
             void handle_connection_event(int fd, uint32_t event_mask);
 
         public:
