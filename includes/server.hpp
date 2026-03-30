@@ -66,12 +66,15 @@ namespace SWS {
             Server& operator=(Server&& other) = default;
 
             /**
-             * @brief Appends an incoming job to the jobs queue to be consumed by the worker threads. A lock has to be acquired and
-             * a waiting process has to be notified.
-             * @param fd The file descriptor of the connection sending the job and also receiving the answer.
-             * @param request_string The request as a string.
+             * Appends a new job to the given connection. It will contain the result of the request passed as a string.
+             * @param conn The connection to append the job to.
+             * @param request_string The request as a string to serve.
              */
-            void append_job(int fd, std::string request_string);
+            void append_job(SWS::Connection& conn, std::string request_string);
+
+            void handle_socket_events(int fd, uint32_t event_mask);
+
+            void handle_connection_event(int fd, uint32_t event_mask);
 
         public:
             /**

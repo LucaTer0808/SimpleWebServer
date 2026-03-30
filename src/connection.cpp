@@ -81,7 +81,7 @@ SWS::ConnectionStatus SWS::Connection::push_data() {
 
         if (sent == 0) {
             SWS::log(SWS::LogLevel::INFO, "No active connection to client with FD: " + std::to_string(this->client_fd));
-            return SWS::ConnectionStatus::CLOSED;
+            return SWS::ConnectionStatus::ERROR;
         }
 
         this->buffer_out.erase(0, static_cast<size_t>(sent));
@@ -90,7 +90,7 @@ SWS::ConnectionStatus SWS::Connection::push_data() {
     return SWS::ConnectionStatus::COMPLETE; // if the send buffer is empty, we can happily exit!
 }
 
-SWS::ConnectionStatus SWS::Connection::receive() {
+bool SWS::Connection::receive() {
     std::array<char, 4096> buffer;
 
     while(true) {
@@ -99,22 +99,22 @@ SWS::ConnectionStatus SWS::Connection::receive() {
         if (bytes_received < 0) {
             if (errno != EWOULDBLOCK && errno != EAGAIN) {
                 SWS::log_errno("Failed to receive data from client with FD: " + std::to_string(this->client_fd));
-                return SWS::ConnectionStatus::ERROR;
+                return false;
             } else {
-                return SWS::ConnectionStatus::OPEN; // if the recv() buffer was cleared properly or still has content left.
+                return true; // if the recv() buffer was cleared properly
             }
         }
 
         if (bytes_received == 0) {
             SWS::log(SWS::LogLevel::INFO, "No active connection to client with FD: " + std::to_string(this->client_fd));
-            return SWS::ConnectionStatus::CLOSED; // recv() only returns 0, when the connection has been closed!
+            return false; // recv() only returns 0, when the connection has been closed!
         }
 
         this->buffer_in.append(buffer.data(), bytes_received);
 
         if (this->buffer_in.size() > MAXIMUM_BUFFER_SIZE) { // value is pickd arbitrarily. Can be changed if needed!
             SWS::log(SWS::LogLevel::WARNING, "Request size exceeded the healthy limit of " + std::to_string(MAXIMUM_BUFFER_SIZE / 1024) + " kb on client socket with FD: " + std::to_string(this->client_fd));  
-            return SWS::ConnectionStatus::PAYLOAD_TOO_LARGE;
+            return false;
         }
     }
 }
@@ -135,7 +135,7 @@ std::string SWS::Connection::get_latest_request() {
 
 SWS::ConnectionStatus SWS::Connection::try_serve_future() {
     if (!this->is_future_complete()) {
-        return SWS::ConnectionStatus::COMPLETE;
+        return SWS::ConnectionStatus::WAITING;
     }
 
     std::string response = this->responses.front().get();

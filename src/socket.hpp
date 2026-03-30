@@ -46,6 +46,11 @@ namespace SWS { /* SimpleWebServer */
             std::vector<std::unique_ptr<SWS::Connection>> accept();
 
             /**
+             * Returns the file descriptor of the listening socket instance.
+             */
+            int get_fd() const;
+
+            /**
              * Closes the socket
              */
             void close();

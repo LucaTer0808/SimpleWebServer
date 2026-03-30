@@ -1,7 +1,10 @@
+#include <sys/epoll.h>
+
 #include "../includes/server.hpp"
 #include "common/log.hpp"
 
-SWS::Server::Server() : jobs(), worker_threads(), listening_socket(nullptr), conns(), event_handler(), http_handler() {}
+SWS::Server::Server() : jobs(), worker_threads(), listening_socket(nullptr), conns(), event_handler(), http_handler() {
+}
 
 void SWS::Server::get(std::string route, HandlerFunc func) {
     std::string route_copy = route;
@@ -20,6 +23,8 @@ void SWS::Server::start(uint16_t port, size_t num_workers = 0) {
         return;
     }
 
+    this->event_handler.add(this->listening_socket->get_fd(), EPOLLIN); // registers listening socket for EPOLLIN
+
     size_t actual_concurrency = this->calculate_thread_number(num_workers);
 
     for (size_t i = 0; i < actual_concurrency; ++i) {
@@ -32,19 +37,18 @@ void SWS::Server::start(uint16_t port, size_t num_workers = 0) {
     this->master_thread_loop();
 }
 
-// TODO: Implement
 void SWS::Server::master_thread_loop() {
     while(true) {
         std::unordered_map<int, uint32_t> events = this->event_handler.wait_events();
 
         for (auto& [fd, event_mask] : events) {
-            if (this->conns.find(fd) == this->conns.end()) {
-                SWS::log(SWS::LogLevel::WARNING, std::string("No connetion represented by fd: " + std::to_string(fd) + std::string(" currently exists. The events can not be executed!")));
-                continue;
+            if (fd == this->listening_socket->get_fd()) {
+                handle_socket_events(fd, event_mask);
+            } else {
+                handle_connection_event(fd, event_mask);
             }
         }
     }
-
 }
 
 // TODO: Implement
@@ -52,21 +56,66 @@ void SWS::Server::worker_thread_loop() {
     while(true) {}
 }
 
-void SWS::Server::append_job(int fd, std::string request_string) {
-    if (fd < 0) {
-        SWS::log(SWS::LogLevel::WARNING, "Negative file descriptor passed to append_job. Can not append the job!");
+// TODO: Implement
+void SWS::Server::handle_socket_events(int fd, uint32_t event_mask) {
+    return;
+}
+
+void SWS::Server::handle_connection_event(int fd, uint32_t event_mask) {
+    auto it = this->conns.find(fd);
+    if (it == this->conns.end()) {
+        SWS::log(SWS::LogLevel::WARNING, std::format("The fd: {} does not represent an active connection!", fd));
         return;
     }
 
-    if (this->conns.find(fd) == this->conns.end()) {
-        SWS::log(SWS::LogLevel::WARNING, "The given file descriptor does not represent a valid connection! append_job cannot be called!");
-        return;
+    SWS::Connection& conn = *(it->second);
+
+    if (event_mask & EPOLLIN) {
+        bool correct = conn.receive();
+
+        if (!correct) {
+            this->event_handler.remove(fd);
+            this->conns.erase(fd);
+            return;
+        }
+
+        std::string request = conn.get_latest_request();
+
+        if (!request.empty()) {
+            this->append_job(conn, std::move(request));
+        }
     }
 
+    SWS::ConnectionStatus status = conn.try_serve_future();
+    if (event_mask & EPOLLOUT) {
+        status = conn.push_data();
+    }
+
+    switch (status) {
+        case SWS::ConnectionStatus::ERROR:
+            this->event_handler.remove(fd);
+            this->conns.erase(fd);
+            return;
+        
+        case SWS::ConnectionStatus::WANT_WRITE:
+            this->event_handler.edit(fd, EPOLLIN | EPOLLOUT);
+            break;
+
+        case SWS::ConnectionStatus::COMPLETE:
+            this->event_handler.edit(fd, EPOLLIN);
+            break;
+
+        default:
+            this->event_handler.edit(fd, EPOLLIN | EPOLLOUT);
+            break;
+    }
+}
+
+void SWS::Server::append_job(SWS::Connection& conn, std::string request_string) {
     std::promise<std::string> promise;
     std::future<std::string> future = promise.get_future();
 
-    this->conns.at(fd)->enqueue_future(std::move(future));
+    conn.enqueue_future(std::move(future));
 
     SWS::Job job;
     job.request = std::move(request_string);
@@ -91,4 +140,3 @@ size_t SWS::Server::calculate_thread_number(size_t num_workers) {
 
     return actual_concurrency;
 }
-

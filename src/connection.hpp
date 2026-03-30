@@ -29,6 +29,7 @@ namespace SWS {
              * @param data The data to be appended to the output puffer.
              * @return WANT_WRITE, when there still is data in the puffer to be pushed through the socket after the first initial send.
              * @return COMPLETE, when all data could be pushed through the socket and nothing is left to do.
+             * @return ERROR; when something unusual happened that demands the closing of the connection.
              */
             SWS::ConnectionStatus send(const std::string& data);
 
@@ -104,12 +105,10 @@ namespace SWS {
             
             /**
              * @brief Reveives data from the client socket and writes it to the input buffer.
-             * @return OPEN, when the data has been received properly.
-             * @return CLOSED, when the socket was closed by the client.
-             * @return ERROR, when an unfixable error occured.
-             * @return PAYLOAD_TOO_LARGE, when the input buffer exceeds the limit that is considered healthy.
+             * @return true, if the receiving process finished without any issue.
+             * @return false, if an error occured and the connection has to be closed.
              */
-            SWS::ConnectionStatus receive();
+            bool receive();
 
             /**
              * @brief Removes the latest full request from the buffer and returns it.

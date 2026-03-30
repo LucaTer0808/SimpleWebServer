@@ -99,6 +99,10 @@ std::vector<std::unique_ptr<SWS::Connection>> SWS::Socket::accept() {
     return conns;
 }
 
+int SWS::Socket::get_fd() const {
+    return this->socket_fd;
+}
+
 void SWS::Socket::close() {
     if (this->socket_fd >= 0) {
         ::close(this->socket_fd);
