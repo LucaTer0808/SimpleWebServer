@@ -58,12 +58,14 @@ void SWS::Server::worker_thread_loop() {
 
 // TODO: Implement
 void SWS::Server::handle_socket_events(int fd, uint32_t event_mask) {
+    if (event_mask  )
     return;
 }
 
 void SWS::Server::handle_connection_event(int fd, uint32_t event_mask) {
     auto it = this->conns.find(fd);
     if (it == this->conns.end()) {
+        this->event_handler.remove(fd);
         SWS::log(SWS::LogLevel::WARNING, std::format("The fd: {} does not represent an active connection!", fd));
         return;
     }
@@ -129,14 +131,12 @@ size_t SWS::Server::calculate_thread_number(size_t num_workers) {
     size_t min_concurrency = std::thread::hardware_concurrency();
 
     if (num_workers == 0) {
-        actual_concurrency = min_concurrency * SWS::Server::THREAD_MULT;
-    } else {
-        if (num_workers > min_concurrency) {
-            actual_concurrency = num_workers;
-        } else {
-            actual_concurrency = min_concurrency;
-        }
+        return min_concurrency * SWS::Server::THREAD_MULT;
+    }
+        
+    if (num_workers > min_concurrency) {
+        return actual_concurrency = num_workers;
     }
 
-    return actual_concurrency;
+    return min_concurrency;
 }
