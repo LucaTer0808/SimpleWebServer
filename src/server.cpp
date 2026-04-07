@@ -127,7 +127,6 @@ void SWS::Server::append_job(SWS::Connection& conn, std::string request_string) 
 }
 
 size_t SWS::Server::calculate_thread_number(size_t num_workers) {
-    size_t actual_concurrency = 0;
     size_t min_concurrency = std::thread::hardware_concurrency();
 
     if (num_workers == 0) {
@@ -135,7 +134,7 @@ size_t SWS::Server::calculate_thread_number(size_t num_workers) {
     }
         
     if (num_workers > min_concurrency) {
-        return actual_concurrency = num_workers;
+        return num_workers;
     }
 
     return min_concurrency;
